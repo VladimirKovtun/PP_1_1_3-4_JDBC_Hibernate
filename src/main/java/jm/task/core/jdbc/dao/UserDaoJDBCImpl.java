@@ -25,7 +25,9 @@ public class UserDaoJDBCImpl implements UserDao {
                     " age INTEGER not NULL, " +
                     " PRIMARY KEY (id))";
             statement.executeUpdate(createTable);
+            connection.commit();
         } catch (SQLException e) {
+            rollbackQuietly(connection);
             LOGGER.log(Level.SEVERE, "Create table failed!!");
             throw new RuntimeException(e);
         }
@@ -34,7 +36,9 @@ public class UserDaoJDBCImpl implements UserDao {
     public void dropUsersTable() {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("DROP TABLE IF EXISTS `users`");
+            connection.commit();
         } catch (SQLException e) {
+            rollbackQuietly(connection);
             LOGGER.log(Level.SEVERE, "Drop table failed!");
             throw new RuntimeException(e);
         }
@@ -42,24 +46,28 @@ public class UserDaoJDBCImpl implements UserDao {
 
     public void saveUser(String name, String lastName, byte age) {
         try (PreparedStatement preparedStatement =
-                     connection.prepareStatement("INSERT INTO users (name, last_name, age) VALUES (?, ?, ?)");) {
-
+                     connection.prepareStatement("INSERT INTO users (name, last_name, age) VALUES (?, ?, ?)")) {
             preparedStatement.setString(1, name);
             preparedStatement.setString(2, lastName);
             preparedStatement.setByte(3, age);
             preparedStatement.executeUpdate();
+            connection.commit();
             LOGGER.log(Level.INFO, "User c {0} добавлен в базу", name);
         } catch (SQLException e) {
+            rollbackQuietly(connection);
             LOGGER.log(Level.SEVERE, "Save user failed!");
             throw new RuntimeException(e);
         }
     }
 
     public void removeUserById(long id) {
-        try (Statement statement = connection.createStatement()){
+        try (Statement statement = connection.createStatement()) {
+
             int row = statement.executeUpdate("DELETE FROM users where id = " + id);
+            connection.commit();
             LOGGER.log(Level.INFO, "{0} rows deleted", row);
         } catch (SQLException e) {
+            rollbackQuietly(connection);
             LOGGER.log(Level.SEVERE, "Delete user failed!");
             throw new RuntimeException(e);
         }
@@ -67,7 +75,7 @@ public class UserDaoJDBCImpl implements UserDao {
 
     public List<User> getAllUsers() {
         List<User> usersList = new ArrayList<>();
-        try(ResultSet resultSet = connection.createStatement().executeQuery("SELECT * FROM users");) {
+        try(ResultSet resultSet = connection.createStatement().executeQuery("SELECT * FROM users")) {
             while (resultSet.next()) {
                 User user = new User();
                 user.setId(resultSet.getLong("id"));
@@ -75,9 +83,11 @@ public class UserDaoJDBCImpl implements UserDao {
                 user.setLastName(resultSet.getString("last_name"));
                 user.setAge(resultSet.getByte("age"));
                 usersList.add(user);
-                LOGGER.log(Level.INFO, "{0} ", user);
             }
+            connection.commit();
+            LOGGER.log(Level.INFO, "{0} ", usersList);
         } catch (SQLException e) {
+            rollbackQuietly(connection);
             LOGGER.log(Level.SEVERE, "Fail!");
             throw new RuntimeException(e);
         }
@@ -87,9 +97,21 @@ public class UserDaoJDBCImpl implements UserDao {
     public void cleanUsersTable() {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("TRUNCATE TABLE users");
+            connection.commit();
         } catch (SQLException e) {
+            rollbackQuietly(connection);
             LOGGER.log(Level.SEVERE, "Clean table failed!");
             throw new RuntimeException(e);
+        }
+    }
+
+    private void rollbackQuietly(Connection connection) {
+        if (connection != null) {
+            try {
+                connection.rollback();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }

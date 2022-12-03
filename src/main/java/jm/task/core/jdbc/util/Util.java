@@ -1,7 +1,5 @@
 package jm.task.core.jdbc.util;
 
-import jm.task.core.jdbc.dao.UserDaoJDBCImpl;
-
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -21,6 +19,7 @@ public class Util {
          try {
             Class.forName(JDBC_DRIVER);
             connection = DriverManager.getConnection(connectionUrl, USERNAME, PASSWORD);
+            connection.setAutoCommit(false);
          } catch (ClassNotFoundException | SQLException e) {
             LOGGER.log(Level.SEVERE, "Connection failed!!");
             throw new RuntimeException(e);
