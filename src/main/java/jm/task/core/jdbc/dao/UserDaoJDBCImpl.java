@@ -12,19 +12,19 @@ import java.util.logging.Logger;
 public class UserDaoJDBCImpl implements UserDao {
     private final Logger LOGGER = Logger.getLogger(UserDaoJDBCImpl.class.getName());
     private final Connection connection = Util.getConnection();
+
     public UserDaoJDBCImpl() {
 
     }
 
     public void createUsersTable() {
-        try (Statement statement = connection.createStatement()) {
-            String createTable = "CREATE TABLE IF NOT EXISTS users " +
-                    "(id INTEGER not NULL AUTO_INCREMENT, " +
-                    " name VARCHAR(50) not NULL, " +
-                    " last_name VARCHAR (50) not NULL, " +
-                    " age INTEGER not NULL, " +
-                    " PRIMARY KEY (id))";
-            statement.executeUpdate(createTable);
+        try (PreparedStatement preparedStatement = connection.prepareStatement("CREATE TABLE IF NOT EXISTS users " +
+                "(id INTEGER not NULL AUTO_INCREMENT, " +
+                " name VARCHAR(50) not NULL, " +
+                " last_name VARCHAR (50) not NULL, " +
+                " age INTEGER not NULL, " +
+                " PRIMARY KEY (id))")) {
+            preparedStatement.executeUpdate();
             connection.commit();
         } catch (SQLException e) {
             rollbackQuietly(connection);
@@ -34,8 +34,8 @@ public class UserDaoJDBCImpl implements UserDao {
     }
 
     public void dropUsersTable() {
-        try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate("DROP TABLE IF EXISTS `users`");
+        try (PreparedStatement preparedStatement = connection.prepareStatement("DROP TABLE IF EXISTS `users`")) {
+            preparedStatement.executeUpdate();
             connection.commit();
         } catch (SQLException e) {
             rollbackQuietly(connection);
@@ -61,9 +61,11 @@ public class UserDaoJDBCImpl implements UserDao {
     }
 
     public void removeUserById(long id) {
-        try (Statement statement = connection.createStatement()) {
+        try (PreparedStatement preparedStatement =
+                     connection.prepareStatement("DELETE FROM users where id = ?")) {
 
-            int row = statement.executeUpdate("DELETE FROM users where id = " + id);
+            preparedStatement.setLong(1, id);
+            int row = preparedStatement.executeUpdate();
             connection.commit();
             LOGGER.log(Level.INFO, "{0} rows deleted", row);
         } catch (SQLException e) {
@@ -75,7 +77,8 @@ public class UserDaoJDBCImpl implements UserDao {
 
     public List<User> getAllUsers() {
         List<User> usersList = new ArrayList<>();
-        try(ResultSet resultSet = connection.createStatement().executeQuery("SELECT * FROM users")) {
+        try (PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM users")) {
+            ResultSet resultSet = preparedStatement.executeQuery();
             while (resultSet.next()) {
                 User user = new User();
                 user.setId(resultSet.getLong("id"));
@@ -95,8 +98,8 @@ public class UserDaoJDBCImpl implements UserDao {
     }
 
     public void cleanUsersTable() {
-        try (Statement statement = connection.createStatement()) {
-            statement.executeUpdate("TRUNCATE TABLE users");
+        try (PreparedStatement preparedStatement = connection.prepareStatement("TRUNCATE TABLE users")) {
+            preparedStatement.executeUpdate();
             connection.commit();
         } catch (SQLException e) {
             rollbackQuietly(connection);
